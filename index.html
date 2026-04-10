@@ -576,8 +576,12 @@
     });
 
     (function init() {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) setState(buildDefaultState());
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) setState(buildDefaultState());
+      } catch (e) {
+        storageAvailable = false;
+      }
       if (!storageAvailable) {
         document.getElementById('storage-warning').style.display = 'block';
       }
