@@ -656,10 +656,10 @@
       document.getElementById('summatives-rows').innerHTML =
         buildReqRows(state, disc, 'summative');
 
-      // Hide section if it has no rows
-      const fRows = document.getElementById('formatives-rows').children.length;
+      // Hide section if it has no rows (count .req-row elements, not all children)
+      const fRows = document.getElementById('formatives-rows').querySelectorAll('.req-row').length;
       document.getElementById('formatives-section').style.display = fRows ? '' : 'none';
-      const sRows = document.getElementById('summatives-rows').children.length;
+      const sRows = document.getElementById('summatives-rows').querySelectorAll('.req-row').length;
       document.getElementById('summatives-section').style.display = sRows ? '' : 'none';
 
       // Attach row click handlers
