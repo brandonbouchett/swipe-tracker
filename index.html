@@ -318,7 +318,7 @@
 
         <div class="settings-section">
           <h3>Data</h3>
-          <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">Download a backup of all your entries. Keep this somewhere safe — clearing your browser data will erase the tracker.</p>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">Download a local backup of all your entries as JSON.</p>
           <button class="btn btn-secondary" onclick="exportBackup()">Download backup (JSON)</button>
         </div>
       </div>
@@ -453,11 +453,8 @@
     // ─────────────────────────────────────────────
     let state = { requirements: {}, entries: [], doctors: [] };
 
-    // All existing render functions call getState() — keep as thin wrapper
+    // All existing render functions call getState() — thin wrapper over module-level state
     function getState() { return state; }
-    // Temporary stubs — replaced by Supabase writes in Tasks 5–8
-    function setState(_data) { /* no-op */ }
-    function generateId() { return crypto.randomUUID(); }
 
     async function loadFromSupabase() {
       const [entriesRes, doctorsRes, reqsRes] = await Promise.all([
