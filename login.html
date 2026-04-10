@@ -64,8 +64,8 @@
     <div class="tagline">Dental clinical requirements tracker</div>
 
     <div class="form-row">
-      <label for="email">Email</label>
-      <input type="email" id="email" placeholder="you@example.com" autocomplete="email">
+      <label for="username">Username</label>
+      <input type="text" id="username" placeholder="your_username" autocomplete="username">
     </div>
     <div class="form-row">
       <label for="password">Password</label>
@@ -105,16 +105,19 @@
     });
 
     async function submit() {
-      const email = document.getElementById('email').value.trim();
+      const username = document.getElementById('username').value.trim().toLowerCase();
       const password = document.getElementById('password').value;
       const errEl = document.getElementById('error-msg');
       const btn = document.getElementById('submit-btn');
 
       errEl.textContent = '';
-      if (!email || !password) {
-        errEl.textContent = 'Please enter your email and password.';
+      if (!username || !password) {
+        errEl.textContent = 'Please enter your username and password.';
         return;
       }
+
+      // Supabase Auth requires an email — construct one from the username
+      const email = username + '@swipetracker.app';
 
       btn.disabled = true;
       btn.textContent = mode === 'login' ? 'Logging in…' : 'Creating account…';
@@ -150,7 +153,7 @@
     }
 
     document.getElementById('submit-btn').addEventListener('click', submit);
-    ['email', 'password'].forEach(id => {
+    ['username', 'password'].forEach(id => {
       document.getElementById(id).addEventListener('keydown', e => {
         if (e.key === 'Enter') submit();
       });
