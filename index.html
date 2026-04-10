@@ -643,18 +643,20 @@
       }
     }
 
-    function deleteEntry(id) {
+    async function deleteEntry(id) {
       if (!confirm('Delete this entry?')) return;
-      // Capture which row is open before render wipes the DOM
+
       const openRow = document.querySelector('.req-row.expanded');
       const ctx = openRow
         ? { disc: openRow.dataset.disc, proc: openRow.dataset.proc, type: openRow.dataset.type }
         : null;
-      const state = getState();
+
+      const { error } = await sb.from('entries').delete().eq('id', id);
+      if (error) { alert('Failed to delete entry.'); return; }
+
       state.entries = state.entries.filter(e => e.id !== id);
-      setState(state);
       render();
-      // Reopen the same panel so the user doesn't lose their place
+
       if (ctx) {
         const row = document.getElementById(rowId(ctx.disc, ctx.proc, ctx.type));
         if (row) toggleLogPanel(row);
