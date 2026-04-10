@@ -355,7 +355,234 @@
   </div>
 
   <script>
-    // ── JS goes here in later tasks ──
+    // ─────────────────────────────────────────────
+    // CONSTANTS
+    // ─────────────────────────────────────────────
+    const STORAGE_KEY = 'swipeTracker';
+    const DISCIPLINES = ['Diagnosis','Operative','Peds','Perio','Endo','Prosth','Surgery','Ortho'];
+
+    const DEFAULT_REQUIREMENTS = {
+      Diagnosis: {
+        'Tx Plan Basic':                          { formative: 1, summative: 0 },
+        'Tx Plan Complex':                        { formative: 4, summative: 0 },
+        'NPI':                                    { formative: 2, summative: 1 },
+        'Completion of Comp Care':                { formative: 2, summative: 0 },
+        'Emergency':                              { formative: 2, summative: 1 },
+        'Special Care':                           { formative: 4, summative: 1 },
+        'Collab w Dental Hygienist':              { formative: 2, summative: 0 },
+        'Patient Assessment':                     { formative: 0, summative: 1 },
+        'Outcome of Comp Tx & Recall':            { formative: 0, summative: 1 },
+        'Interprofessional Comm & Pt Presentation': { formative: 0, summative: 1 },
+        'Caries Management':                      { formative: 5, summative: 1 },
+      },
+      Operative: {
+        'Total Fillings':    { formative: 5, summative: 0 },
+        'Class I':           { formative: 1, summative: 1 },
+        'Class II':          { formative: 1, summative: 1 },
+        'Class III/IV':      { formative: 1, summative: 1 },
+        'Class V':           { formative: 1, summative: 1 },
+        'Special Care':      { formative: 4, summative: 1 },
+      },
+      Peds: {
+        'New/Recall Exam':      { formative: 4, summative: 1 },
+        'Prophy':               { formative: 4, summative: 0 },
+        'Fluoride':             { formative: 4, summative: 0 },
+        'Bitewings (x2)':      { formative: 3, summative: 0 },
+        'Xray on Peds Patient': { formative: 1, summative: 0 },
+        'Class I/II':           { formative: 2, summative: 1 },
+        'Class III/IV/V':       { formative: 2, summative: 0 },
+        'Sealant':              { formative: 4, summative: 1 },
+        'Infant Oral Exam':     { formative: 2, summative: 0 },
+        'Peds Case Completion': { formative: 2, summative: 0 },
+        'Complex':              { formative: 1, summative: 0 },
+        'Pulp Therapy':         { formative: 1, summative: 0 },
+      },
+      Perio: {
+        'Assists':           { formative: 4, summative: 0 },
+        'Perio Chart':       { formative: 6, summative: 2 },
+        'Perio Diagnosis':   { formative: 7, summative: 1 },
+        'Prophy':            { formative: 7, summative: 1 },
+        'SRP (Full)':        { formative: 9, summative: 1 },
+        'Perio Surgery':     { formative: 3, summative: 1 },
+        'Perio Maintenance': { formative: 5, summative: 1 },
+        'Perio Re-Eval':     { formative: 5, summative: 1 },
+      },
+      Endo: {
+        'Assists':         { formative: 4, summative: 0 },
+        'Case Difficulty': { formative: 5, summative: 0 },
+        'Endo Diagnosis':  { formative: 5, summative: 0 },
+        'NonSurg Endo':    { formative: 4, summative: 1 },
+        'Endo Recall':     { formative: 2, summative: 1 },
+      },
+      Prosth: {
+        'Single Crown':      { formative: 6, summative: 1 },
+        'Fixed Partial':     { formative: 1, summative: 1 },
+        'Complete Denture':  { formative: 1, summative: 1 },
+        'Removable Partial': { formative: 1, summative: 1 },
+        'Lab Prescription':  { formative: 6, summative: 1 },
+        'Implant Crown':     { formative: 1, summative: 1 },
+      },
+      Surgery: {
+        'Presurg Case':               { formative: 2, summative: 0 },
+        'Simple/Surgical Extraction': { formative: 5, summative: 1 },
+        'Multiple Tooth Extraction':  { formative: 1, summative: 1 },
+        'Inhalation Sedation':        { formative: 2, summative: 1 },
+        'Prescription Writing':       { formative: 0, summative: 1 },
+        'Medical Risk Assessment':    { formative: 0, summative: 1 },
+        'Local Anesthesia':           { formative: 0, summative: 1 },
+      },
+      Ortho: {
+        'Consultation': { formative: 3, summative: 1 },
+        'TMD':          { formative: 0, summative: 1 },
+      },
+    };
+
+    // ─────────────────────────────────────────────
+    // STATE (localStorage)
+    // ─────────────────────────────────────────────
+    let storageAvailable = true;
+
+    function getState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return buildDefaultState();
+        return JSON.parse(raw);
+      } catch (e) {
+        storageAvailable = false;
+        return buildDefaultState();
+      }
+    }
+
+    function setState(data) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      } catch (e) {
+        storageAvailable = false;
+        document.getElementById('storage-warning').style.display = 'block';
+      }
+    }
+
+    function buildDefaultState() {
+      return {
+        requirements: JSON.parse(JSON.stringify(DEFAULT_REQUIREMENTS)),
+        entries: [],
+        doctors: [],
+      };
+    }
+
+    function generateId() {
+      return crypto.randomUUID();
+    }
+
+    // ─────────────────────────────────────────────
+    // QUERY HELPERS
+    // ─────────────────────────────────────────────
+    function getEntriesFor(state, discipline, procedure, type) {
+      return state.entries.filter(
+        e => e.discipline === discipline && e.procedure === procedure && e.type === type
+      );
+    }
+
+    function getCountFor(state, discipline, procedure, type) {
+      return getEntriesFor(state, discipline, procedure, type).length;
+    }
+
+    function computeGlobalProgress(state) {
+      let formDone = 0, formNeeded = 0, summDone = 0, summNeeded = 0;
+      for (const [disc, procs] of Object.entries(state.requirements)) {
+        for (const [proc, req] of Object.entries(procs)) {
+          formNeeded += req.formative;
+          summNeeded += req.summative;
+          formDone += Math.min(getCountFor(state, disc, proc, 'formative'), req.formative);
+          summDone += Math.min(getCountFor(state, disc, proc, 'summative'), req.summative);
+        }
+      }
+      return { formDone, formNeeded, summDone, summNeeded };
+    }
+
+    function computeDiscProgress(state, discipline) {
+      const procs = state.requirements[discipline] || {};
+      let done = 0, needed = 0;
+      for (const [proc, req] of Object.entries(procs)) {
+        needed += req.formative + req.summative;
+        done += Math.min(getCountFor(state, discipline, proc, 'formative'), req.formative);
+        done += Math.min(getCountFor(state, discipline, proc, 'summative'), req.summative);
+      }
+      return { done, needed };
+    }
+
+    // ─────────────────────────────────────────────
+    // Stubs — implemented in later tasks
+    // ─────────────────────────────────────────────
+    function renderDiscipline() {}
+    function renderSettings() {}
+
+    // ─────────────────────────────────────────────
+    // RENDERING — NAV + SIDEBAR
+    // ─────────────────────────────────────────────
+    let activeDiscipline = DISCIPLINES[0];
+
+    function renderNavCounts() {
+      const state = getState();
+      const { formDone, formNeeded, summDone, summNeeded } = computeGlobalProgress(state);
+      document.getElementById('global-counts').textContent =
+        `Formatives: ${formDone}/${formNeeded}  |  Summatives: ${summDone}/${summNeeded}`;
+    }
+
+    function renderSidebar() {
+      const state = getState();
+      const container = document.getElementById('disc-list');
+      container.innerHTML = DISCIPLINES.map(disc => {
+        const { done, needed } = computeDiscProgress(state, disc);
+        const isActive = disc === activeDiscipline;
+        return `
+          <div class="disc-item${isActive ? ' active' : ''}" data-disc="${disc}">
+            <span>${disc}</span>
+            <span class="disc-badge">${done}/${needed}</span>
+          </div>`;
+      }).join('');
+
+      container.querySelectorAll('.disc-item').forEach(el => {
+        el.addEventListener('click', () => {
+          activeDiscipline = el.dataset.disc;
+          render();
+        });
+      });
+    }
+
+    // ─────────────────────────────────────────────
+    // MASTER RENDER + VIEW SWITCHING
+    // ─────────────────────────────────────────────
+    function render() {
+      renderNavCounts();
+      renderSidebar();
+      renderDiscipline();
+    }
+
+    function showView(viewName) {
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      document.getElementById(viewName + '-view').classList.add('active');
+      document.querySelectorAll('.nav-link').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === viewName);
+      });
+      if (viewName === 'settings') renderSettings();
+    }
+
+    // ─────────────────────────────────────────────
+    // INIT
+    // ─────────────────────────────────────────────
+    document.querySelectorAll('.nav-link').forEach(btn => {
+      btn.addEventListener('click', () => showView(btn.dataset.view));
+    });
+
+    (function init() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) setState(buildDefaultState());
+      if (!storageAvailable) {
+        document.getElementById('storage-warning').style.display = 'block';
+      }
+      render();
+    })();
   </script>
 </body>
 </html>
