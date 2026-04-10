@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Swipe Tracker</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f0f1a;
+      --surface:   #141428;
+      --surface2:  #1a1a2e;
+      --surface3:  #252550;
+      --border:    #2a2a4a;
+      --accent:    #4a90d9;
+      --accent-lt: #6a9fd8;
+      --text:      #e0e0e0;
+      --muted:     #888;
+      --faint:     #555;
+      --green:     #4caf50;
+      --orange:    #ff9800;
+      --red:       #f44336;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Top nav ─────────────────────────────── */
+    #topnav {
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 48px;
+      flex-shrink: 0;
+      gap: 16px;
+    }
+    #topnav .logo { font-weight: 700; font-size: 15px; color: var(--accent-lt); letter-spacing: 0.5px; }
+    #topnav .nav-links { display: flex; gap: 4px; }
+    #topnav .nav-link {
+      padding: 6px 14px; border-radius: 6px; font-size: 13px;
+      color: var(--muted); cursor: pointer; border: none; background: none;
+      transition: background 0.15s, color 0.15s;
+    }
+    #topnav .nav-link:hover { background: var(--surface3); color: var(--text); }
+    #topnav .nav-link.active { background: var(--surface3); color: var(--accent-lt); }
+    #global-counts { font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+    /* ── Storage warning ─────────────────────── */
+    #storage-warning {
+      background: #5a2000; border-bottom: 1px solid #8a4000;
+      padding: 8px 20px; font-size: 12px; color: #ffb74d; display: none;
+    }
+
+    /* ── App layout ──────────────────────────── */
+    #app { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Sidebar ─────────────────────────────── */
+    #sidebar {
+      width: 168px; background: var(--surface); border-right: 1px solid var(--border);
+      overflow-y: auto; flex-shrink: 0; padding: 12px 8px;
+    }
+    .sidebar-label {
+      font-size: 10px; color: var(--faint); text-transform: uppercase;
+      letter-spacing: 1px; padding: 4px 8px; margin-bottom: 4px;
+    }
+    .disc-item {
+      padding: 8px 10px; border-radius: 6px; font-size: 13px; cursor: pointer;
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 2px; transition: background 0.12s;
+    }
+    .disc-item:hover { background: var(--surface2); }
+    .disc-item.active { background: #1e2a4a; color: var(--accent-lt); }
+    .disc-badge {
+      font-size: 10px; padding: 1px 6px; border-radius: 8px;
+      background: var(--surface3); color: var(--muted);
+    }
+    .disc-item.active .disc-badge { background: #1a3a6a; color: var(--accent-lt); }
+
+    /* ── Main panel ──────────────────────────── */
+    #main { flex: 1; overflow-y: auto; padding: 20px; }
+
+    /* ── Views ───────────────────────────────── */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* ── Discipline header ───────────────────── */
+    #disc-title { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+    .legend { display: flex; gap: 16px; font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+    .legend span { display: flex; align-items: center; gap: 5px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+    .progress-wrap { background: var(--surface2); border-radius: 6px; height: 7px; overflow: hidden; margin-bottom: 6px; }
+    .progress-bar { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--accent), var(--accent-lt)); transition: width 0.3s; }
+    #disc-progress-label { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
+
+    /* ── Section ─────────────────────────────── */
+    .section { margin-bottom: 24px; }
+    .section-title {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+      color: var(--accent-lt); margin-bottom: 10px; font-weight: 600;
+    }
+
+    /* ── Requirement table ───────────────────── */
+    .req-table { background: var(--surface); border-radius: 8px; border: 1px solid var(--border); overflow: hidden; }
+    .req-header {
+      display: grid; grid-template-columns: 1fr 72px 72px 32px;
+      padding: 7px 14px; gap: 8px; border-bottom: 1px solid var(--border);
+    }
+    .req-header span { font-size: 10px; color: var(--faint); text-transform: uppercase; letter-spacing: 0.5px; text-align: center; }
+    .req-header span:first-child { text-align: left; }
+    .req-row {
+      display: grid; grid-template-columns: 1fr 72px 72px 32px;
+      align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--surface2);
+      gap: 8px; cursor: pointer; transition: background 0.12s; user-select: none;
+    }
+    .req-row:last-of-type { border-bottom: none; }
+    .req-row:hover, .req-row.expanded { background: #1a1a38; }
+    .req-name { font-size: 13px; }
+    .req-done { text-align: center; font-size: 13px; font-weight: 600; }
+    .req-done.status-met    { color: var(--green); }
+    .req-done.status-partial { color: var(--orange); }
+    .req-done.status-none   { color: var(--red); }
+    .req-needed { text-align: center; font-size: 13px; color: var(--muted); }
+    .req-chevron { text-align: center; font-size: 11px; color: var(--faint); }
+
+    /* ── Log panel ───────────────────────────── */
+    .log-panel {
+      background: #0f1020; border-bottom: 1px solid var(--border);
+      padding: 12px 14px; display: none;
+    }
+    .log-panel.open { display: block; }
+    .log-entry {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 7px 10px; background: var(--surface); border-radius: 5px;
+      margin-bottom: 5px; font-size: 12px; gap: 8px;
+    }
+    .entry-info { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; color: var(--muted); }
+    .entry-date { color: var(--accent-lt); font-weight: 600; }
+    .entry-doctor { color: var(--text); }
+    .entry-axium { color: var(--faint); }
+    .entry-notes { color: var(--faint); font-style: italic; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .entry-delete {
+      color: var(--faint); cursor: pointer; font-size: 11px;
+      padding: 2px 6px; border-radius: 3px; border: none; background: none;
+      flex-shrink: 0; transition: color 0.12s;
+    }
+    .entry-delete:hover { color: var(--red); }
+    .log-empty { font-size: 12px; color: var(--faint); font-style: italic; margin-bottom: 8px; }
+    .add-entry-btn {
+      margin-top: 8px; padding: 7px 14px; background: var(--surface2);
+      border: 1px dashed #2a4a7a; border-radius: 6px; color: var(--accent-lt);
+      font-size: 12px; cursor: pointer; width: 100%; text-align: center;
+      transition: background 0.12s;
+    }
+    .add-entry-btn:hover { background: var(--surface3); }
+
+    /* ── Modal ───────────────────────────────── */
+    #modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+      display: none; align-items: center; justify-content: center; z-index: 100;
+    }
+    #modal-overlay.open { display: flex; }
+    #modal {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 24px; width: 420px; max-width: 95vw;
+    }
+    #modal h3 { font-size: 15px; font-weight: 600; margin-bottom: 18px; }
+    .form-row { margin-bottom: 14px; }
+    .form-row label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+    .form-row input,
+    .form-row select,
+    .form-row textarea {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 6px; padding: 8px 10px; color: var(--text);
+      font-size: 13px; font-family: inherit; outline: none;
+      transition: border-color 0.15s;
+    }
+    .form-row input:focus,
+    .form-row select:focus,
+    .form-row textarea:focus { border-color: var(--accent); }
+    .form-row textarea { height: 70px; resize: none; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+    .btn { padding: 8px 18px; border-radius: 6px; font-size: 13px; cursor: pointer; border: none; font-family: inherit; }
+    .btn-primary { background: #2a5aaa; color: white; }
+    .btn-primary:hover { background: #3468c0; }
+    .btn-secondary { background: var(--surface3); color: var(--muted); }
+    .btn-secondary:hover { color: var(--text); }
+
+    /* ── Settings page ───────────────────────── */
+    #settings-view h2 { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+    #settings-view .settings-subtitle { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+    .settings-section { margin-bottom: 32px; }
+    .settings-section h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-lt); margin-bottom: 12px; }
+    .settings-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .settings-table th { text-align: left; padding: 6px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--faint); border-bottom: 1px solid var(--border); }
+    .settings-table td { padding: 8px 10px; border-bottom: 1px solid var(--surface2); vertical-align: middle; }
+    .settings-table tr:last-child td { border-bottom: none; }
+    .settings-table .disc-col { color: var(--muted); font-size: 11px; }
+    .req-num-input {
+      width: 56px; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 5px; padding: 4px 8px; color: var(--text);
+      font-size: 13px; text-align: center; font-family: inherit;
+    }
+    .req-num-input:focus { outline: none; border-color: var(--accent); }
+    .doctors-list { display: flex; flex-direction: column; gap: 6px; max-width: 400px; }
+    .doctor-item {
+      display: flex; justify-content: space-between; align-items: center;
+      background: var(--surface); padding: 8px 12px; border-radius: 6px; font-size: 13px;
+    }
+    .doctor-delete { color: var(--faint); cursor: pointer; font-size: 11px; border: none; background: none; }
+    .doctor-delete:hover { color: var(--red); }
+    .add-doctor-row { display: flex; gap: 8px; margin-top: 8px; max-width: 400px; }
+    .add-doctor-row input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: var(--text); font-size: 13px; font-family: inherit; outline: none; }
+    .add-doctor-row input:focus { border-color: var(--accent); }
+  </style>
+</head>
+<body>
+
+  <!-- Top navigation -->
+  <nav id="topnav">
+    <div class="logo">Swipe Tracker</div>
+    <div class="nav-links">
+      <button class="nav-link active" data-view="tracker">Tracker</button>
+      <button class="nav-link" data-view="settings">Settings</button>
+    </div>
+    <div id="global-counts">Loading…</div>
+  </nav>
+
+  <!-- Storage warning banner -->
+  <div id="storage-warning">
+    ⚠️ localStorage is unavailable — data will not be saved. Try opening this file outside of private/incognito mode.
+  </div>
+
+  <div id="app">
+    <!-- Sidebar -->
+    <nav id="sidebar">
+      <div class="sidebar-label">Disciplines</div>
+      <div id="disc-list"><!-- rendered by JS --></div>
+    </nav>
+
+    <!-- Main panel -->
+    <main id="main">
+
+      <!-- Tracker view -->
+      <div id="tracker-view" class="view active">
+        <div id="disc-title"></div>
+        <div class="legend">
+          <span><span class="dot" style="background:var(--green)"></span> Complete</span>
+          <span><span class="dot" style="background:var(--orange)"></span> In progress</span>
+          <span><span class="dot" style="background:var(--red)"></span> Not started</span>
+        </div>
+        <div class="progress-wrap"><div class="progress-bar" id="disc-progress-bar"></div></div>
+        <div id="disc-progress-label"></div>
+
+        <div id="formatives-section" class="section">
+          <div class="section-title">Formatives</div>
+          <div class="req-table" id="formatives-table">
+            <div class="req-header">
+              <span>Procedure</span><span>Done</span><span>Needed</span><span></span>
+            </div>
+            <div id="formatives-rows"><!-- rendered by JS --></div>
+          </div>
+        </div>
+
+        <div id="summatives-section" class="section">
+          <div class="section-title">Summatives</div>
+          <div class="req-table" id="summatives-table">
+            <div class="req-header">
+              <span>Procedure</span><span>Done</span><span>Needed</span><span></span>
+            </div>
+            <div id="summatives-rows"><!-- rendered by JS --></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings view -->
+      <div id="settings-view" class="view">
+        <h2>Settings</h2>
+        <p class="settings-subtitle">Edit required counts or manage your saved doctors list.</p>
+
+        <div class="settings-section">
+          <h3>Required Counts</h3>
+          <table class="settings-table" id="req-settings-table">
+            <thead>
+              <tr>
+                <th>Discipline</th>
+                <th>Procedure</th>
+                <th style="text-align:center">Form.</th>
+                <th style="text-align:center">Summ.</th>
+              </tr>
+            </thead>
+            <tbody id="req-settings-body"><!-- rendered by JS --></tbody>
+          </table>
+        </div>
+
+        <div class="settings-section">
+          <h3>Doctors / Instructors</h3>
+          <div class="doctors-list" id="doctors-list"><!-- rendered by JS --></div>
+          <div class="add-doctor-row">
+            <input type="text" id="new-doctor-input" placeholder="Dr. Name…">
+            <button class="btn btn-primary" id="add-doctor-btn">Add</button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Add Entry Modal -->
+  <div id="modal-overlay">
+    <div id="modal">
+      <h3 id="modal-title">Log Entry</h3>
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Date</label>
+          <input type="date" id="f-date">
+        </div>
+        <div class="form-row">
+          <label>axiUm #</label>
+          <input type="text" id="f-axium" placeholder="e.g. 50100511">
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Doctor / Instructor</label>
+        <select id="f-doctor-select"></select>
+      </div>
+      <div class="form-row" id="new-doctor-row" style="display:none">
+        <label>New doctor name</label>
+        <input type="text" id="f-new-doctor" placeholder="Dr. …">
+      </div>
+      <div class="form-row">
+        <label>axiUm Form Code</label>
+        <input type="text" id="f-formcode" placeholder="e.g. D0150">
+      </div>
+      <div class="form-row">
+        <label>Notes</label>
+        <textarea id="f-notes" placeholder="Optional notes…"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
+        <button class="btn btn-primary" id="modal-save">Save Entry</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── JS goes here in later tasks ──
+  </script>
+</body>
+</html>
