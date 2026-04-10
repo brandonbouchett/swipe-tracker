@@ -448,6 +448,13 @@
         if (!raw) return buildDefaultState();
         return JSON.parse(raw);
       } catch (e) {
+        if (e instanceof SyntaxError) {
+          // Stored data is unreadable (e.g. truncated write) — reset to default
+          // but don't flip storageAvailable since writes may still succeed
+          console.warn('swipeTracker: stored data unreadable, resetting.', e);
+          return buildDefaultState();
+        }
+        // Storage API itself is unavailable
         storageAvailable = false;
         return buildDefaultState();
       }
@@ -463,6 +470,7 @@
     }
 
     function buildDefaultState() {
+      // Deep-clone DEFAULT_REQUIREMENTS so Settings edits don't mutate the constant
       return {
         requirements: JSON.parse(JSON.stringify(DEFAULT_REQUIREMENTS)),
         entries: [],
@@ -576,12 +584,8 @@
     });
 
     (function init() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) setState(buildDefaultState());
-      } catch (e) {
-        storageAvailable = false;
-      }
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) setState(buildDefaultState()); // setState handles write errors
       if (!storageAvailable) {
         document.getElementById('storage-warning').style.display = 'block';
       }
