@@ -117,8 +117,7 @@
       align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--surface2);
       gap: 8px; cursor: pointer; transition: background 0.12s; user-select: none;
     }
-    .log-panel:last-child { border-bottom: none; }
-    .req-row:hover, .req-row.expanded { background: #1a1a38; }
+.req-row:hover, .req-row.expanded { background: #1a1a38; }
     .req-name { font-size: 13px; }
     .req-done { text-align: center; font-size: 13px; font-weight: 600; }
     .req-done.status-met    { color: var(--green); }
@@ -484,8 +483,7 @@
       state.doctors = doctorsRes.data.map(row => row.name);
 
       if (reqsRes.data.length === 0) {
-        const { data: { user } } = await sb.auth.getUser();
-        await seedRequirements(user.id);
+        await seedRequirements(currentUserId);
       } else {
         state.requirements = {};
         for (const row of reqsRes.data) {
@@ -600,7 +598,7 @@
       panel.innerHTML = `
         ${entriesHtml}
         <button class="add-entry-btn"
-                data-disc="${esc(discipline)}" data-proc="${esc(proc)}" data-type="${type}">
+                data-disc="${esc(discipline)}" data-proc="${esc(proc)}" data-type="${esc(type)}">
           + Log ${esc(proc)} ${type}
         </button>`;
 
@@ -683,7 +681,7 @@
         const pid = panelId(discipline, proc, type);
         rows.push(`
           <div class="req-row" id="${rid}"
-               data-disc="${esc(discipline)}" data-proc="${esc(proc)}" data-type="${type}">
+               data-disc="${esc(discipline)}" data-proc="${esc(proc)}" data-type="${esc(type)}">
             <div class="req-name">${esc(proc)}</div>
             <div class="req-done ${sc}">${done}</div>
             <div class="req-needed">${needed}</div>
@@ -745,6 +743,7 @@
 
     function closeModal() {
       document.getElementById('modal-overlay').classList.remove('open');
+      document.getElementById('modal-save').disabled = false;
       modalContext = null;
     }
 
@@ -788,9 +787,9 @@
         type: modalContext.type,
         date,
         doctor: doctor || null,
-        axium_number: document.getElementById('f-axium').value.trim(),
-        axium_form_code: document.getElementById('f-formcode').value.trim(),
-        notes: document.getElementById('f-notes').value.trim(),
+        axium_number: document.getElementById('f-axium').value.trim() || null,
+        axium_form_code: document.getElementById('f-formcode').value.trim() || null,
+        notes: document.getElementById('f-notes').value.trim() || null,
       }).select().single();
 
       if (error) { saveBtn.disabled = false; alert('Failed to save entry: ' + error.message); return; }
@@ -868,6 +867,7 @@
 
           const { error } = await sb.from('requirements')
             .update({ [field]: val })
+            .eq('user_id', currentUserId)
             .eq('discipline', disc)
             .eq('procedure', proc);
 
@@ -898,7 +898,7 @@
         list.querySelectorAll('.doctor-delete').forEach(btn => {
           btn.addEventListener('click', async () => {
             const name = btn.dataset.name;
-            const { error } = await sb.from('doctors').delete().eq('name', name);
+            const { error } = await sb.from('doctors').delete().eq('name', name).eq('user_id', currentUserId);
             if (error) { alert('Failed to remove doctor.'); return; }
             state.doctors = state.doctors.filter(d => d !== name);
             renderDoctorsSettings();
@@ -926,8 +926,8 @@
         const { done, needed } = computeDiscProgress(state, disc);
         const isActive = disc === activeDiscipline;
         return `
-          <div class="disc-item${isActive ? ' active' : ''}" data-disc="${disc}">
-            <span>${disc}</span>
+          <div class="disc-item${isActive ? ' active' : ''}" data-disc="${esc(disc)}">
+            <span>${esc(disc)}</span>
             <span class="disc-badge">${done}/${needed}</span>
           </div>`;
       }).join('');

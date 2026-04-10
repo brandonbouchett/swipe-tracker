@@ -100,7 +100,9 @@
       document.getElementById('toggle-text').textContent = isLogin
         ? "Don't have an account?" : 'Already have an account?';
       document.getElementById('toggle-link').textContent = isLogin ? 'Sign up' : 'Log in';
-      document.getElementById('error-msg').textContent = '';
+      const errEl2 = document.getElementById('error-msg');
+      errEl2.textContent = '';
+      errEl2.style.color = '';
       document.getElementById('password').autocomplete = isLogin ? 'current-password' : 'new-password';
     });
 
