@@ -765,29 +765,27 @@
       const saveBtn = document.getElementById('modal-save');
       saveBtn.disabled = true;
 
-      const date = document.getElementById('f-date').value;
-      if (!date) { saveBtn.disabled = false; alert('Please select a date.'); return; }
+      const date = document.getElementById('f-date').value || null;
 
       let doctor = document.getElementById('f-doctor-select').value;
       let newDoctorAdded = false;
       if (doctor === '__new__') {
         const newName = document.getElementById('f-new-doctor').value.trim();
-        if (!newName) { saveBtn.disabled = false; alert('Please enter a doctor name.'); return; }
-        doctor = newName;
-        if (!state.doctors.includes(doctor)) {
-          const { error: docErr } = await sb.from('doctors').insert({ name: doctor });
+        doctor = newName; // empty is fine — no doctor will be saved
+        if (newName && !state.doctors.includes(newName)) {
+          const { error: docErr } = await sb.from('doctors')
+            .upsert({ name: newName }, { onConflict: 'name', ignoreDuplicates: true });
           if (docErr) { saveBtn.disabled = false; alert('Failed to save doctor.'); return; }
           newDoctorAdded = true;
         }
       }
-      if (!doctor) { saveBtn.disabled = false; alert('Please select or add a doctor.'); return; }
 
       const { data, error } = await sb.from('entries').insert({
         discipline: modalContext.discipline,
         procedure: modalContext.proc,
         type: modalContext.type,
         date,
-        doctor,
+        doctor: doctor || null,
         axium_number: document.getElementById('f-axium').value.trim(),
         axium_form_code: document.getElementById('f-formcode').value.trim(),
         notes: document.getElementById('f-notes').value.trim(),
@@ -982,13 +980,10 @@
       const input = document.getElementById('new-doctor-input');
       const name = input.value.trim();
       if (!name) return;
-      if (state.doctors.includes(name)) {
-        input.value = '';
-        return;
-      }
-      const { error } = await sb.from('doctors').insert({ name });
+      const { error } = await sb.from('doctors')
+        .upsert({ name }, { onConflict: 'name', ignoreDuplicates: true });
       if (error) { alert('Failed to add doctor.'); return; }
-      state.doctors.push(name);
+      if (!state.doctors.includes(name)) state.doctors.push(name);
       input.value = '';
       renderDoctorsSettings();
     });
