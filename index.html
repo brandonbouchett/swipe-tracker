@@ -763,21 +763,25 @@
     async function saveEntry() {
       if (!modalContext) return;
 
+      const saveBtn = document.getElementById('modal-save');
+      saveBtn.disabled = true;
+
       const date = document.getElementById('f-date').value;
-      if (!date) { alert('Please select a date.'); return; }
+      if (!date) { saveBtn.disabled = false; alert('Please select a date.'); return; }
 
       let doctor = document.getElementById('f-doctor-select').value;
+      let newDoctorAdded = false;
       if (doctor === '__new__') {
         const newName = document.getElementById('f-new-doctor').value.trim();
-        if (!newName) { alert('Please enter a doctor name.'); return; }
+        if (!newName) { saveBtn.disabled = false; alert('Please enter a doctor name.'); return; }
         doctor = newName;
         if (!state.doctors.includes(doctor)) {
           const { error: docErr } = await sb.from('doctors').insert({ name: doctor });
-          if (docErr) { alert('Failed to save doctor.'); return; }
-          state.doctors.push(doctor);
+          if (docErr) { saveBtn.disabled = false; alert('Failed to save doctor.'); return; }
+          newDoctorAdded = true;
         }
       }
-      if (!doctor) { alert('Please select or add a doctor.'); return; }
+      if (!doctor) { saveBtn.disabled = false; alert('Please select or add a doctor.'); return; }
 
       const { data, error } = await sb.from('entries').insert({
         discipline: modalContext.discipline,
@@ -790,7 +794,7 @@
         notes: document.getElementById('f-notes').value.trim(),
       }).select().single();
 
-      if (error) { alert('Failed to save entry.'); return; }
+      if (error) { saveBtn.disabled = false; alert('Failed to save entry.'); return; }
 
       const entry = {
         id: data.id,
@@ -805,6 +809,7 @@
         createdAt: new Date(data.created_at).getTime(),
       };
 
+      if (newDoctorAdded) state.doctors.push(doctor);
       state.entries.push(entry);
       closeModal();
       render();
