@@ -452,6 +452,7 @@
     // STATE (Supabase)
     // ─────────────────────────────────────────────
     let state = { requirements: {}, entries: [], doctors: [] };
+    let currentUserId = null;
 
     // All existing render functions call getState() — thin wrapper over module-level state
     function getState() { return state; }
@@ -781,6 +782,7 @@
       }
 
       const { data, error } = await sb.from('entries').insert({
+        user_id: currentUserId,
         discipline: modalContext.discipline,
         procedure: modalContext.proc,
         type: modalContext.type,
@@ -1016,6 +1018,7 @@
           window.location.href = 'login.html';
           return;
         }
+        currentUserId = session.user.id;
         await loadFromSupabase();
         document.getElementById('loading-overlay').style.display = 'none';
         render();
