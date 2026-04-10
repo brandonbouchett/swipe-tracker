@@ -687,10 +687,159 @@
     }
 
     // ─────────────────────────────────────────────
-    // Stubs — implemented in later tasks
+    // TASK 6: Add Entry modal
     // ─────────────────────────────────────────────
-    function renderSettings() {}
-    function openModal(discipline, proc, type) {} // stub — implemented in Task 6
+    let modalContext = null; // { discipline, proc, type }
+
+    function openModal(discipline, proc, type) {
+      modalContext = { discipline, proc, type };
+      document.getElementById('modal-title').textContent =
+        `Log ${proc} — ${type.charAt(0).toUpperCase() + type.slice(1)}`;
+
+      // Default date to today
+      document.getElementById('f-date').value = new Date().toISOString().slice(0, 10);
+      document.getElementById('f-axium').value = '';
+      document.getElementById('f-formcode').value = '';
+      document.getElementById('f-notes').value = '';
+
+      populateDoctorSelect();
+      document.getElementById('new-doctor-row').style.display = 'none';
+      document.getElementById('modal-overlay').classList.add('open');
+    }
+
+    function closeModal() {
+      document.getElementById('modal-overlay').classList.remove('open');
+      modalContext = null;
+    }
+
+    function populateDoctorSelect() {
+      const state = getState();
+      const select = document.getElementById('f-doctor-select');
+      const doctors = state.doctors;
+      select.innerHTML = [
+        doctors.length === 0 ? '<option value="">— no saved doctors —</option>' : '',
+        ...doctors.map(d => `<option value="${esc(d)}">${esc(d)}</option>`),
+        '<option value="__new__">+ Add new doctor…</option>',
+      ].join('');
+      if (doctors.length > 0) select.value = doctors[0];
+    }
+
+    function saveEntry() {
+      if (!modalContext) return;
+      const state = getState();
+
+      let doctor = document.getElementById('f-doctor-select').value;
+      if (doctor === '__new__') {
+        const newName = document.getElementById('f-new-doctor').value.trim();
+        if (!newName) { alert('Please enter a doctor name.'); return; }
+        doctor = newName;
+        if (!state.doctors.includes(doctor)) {
+          state.doctors.push(doctor);
+        }
+      }
+
+      const entry = {
+        id: generateId(),
+        discipline: modalContext.discipline,
+        procedure: modalContext.proc,
+        type: modalContext.type,
+        date: document.getElementById('f-date').value,
+        doctor,
+        axiUmNumber: document.getElementById('f-axium').value.trim(),
+        axiUmFormCode: document.getElementById('f-formcode').value.trim(),
+        notes: document.getElementById('f-notes').value.trim(),
+        createdAt: Date.now(),
+      };
+
+      state.entries.push(entry);
+      setState(state);
+      closeModal();
+      render();
+
+      // Reopen the row the user was logging for
+      setTimeout(() => {
+        const rid = rowId(entry.discipline, entry.procedure, entry.type);
+        const row = document.getElementById(rid);
+        if (row) toggleLogPanel(row);
+      }, 50);
+    }
+
+    // ─────────────────────────────────────────────
+    // TASK 7: Settings page
+    // ─────────────────────────────────────────────
+    function renderSettings() {
+      renderReqSettings();
+      renderDoctorsSettings();
+    }
+
+    function renderReqSettings() {
+      const state = getState();
+      const tbody = document.getElementById('req-settings-body');
+      const rows = [];
+      for (const disc of DISCIPLINES) {
+        const procs = state.requirements[disc] || {};
+        let first = true;
+        for (const [proc, req] of Object.entries(procs)) {
+          rows.push(`
+            <tr>
+              <td class="disc-col">${first ? esc(disc) : ''}</td>
+              <td>${esc(proc)}</td>
+              <td style="text-align:center">
+                <input class="req-num-input" type="number" min="0" max="99"
+                       data-disc="${esc(disc)}" data-proc="${esc(proc)}" data-field="formative"
+                       value="${req.formative}">
+              </td>
+              <td style="text-align:center">
+                <input class="req-num-input" type="number" min="0" max="99"
+                       data-disc="${esc(disc)}" data-proc="${esc(proc)}" data-field="summative"
+                       value="${req.summative}">
+              </td>
+            </tr>`);
+          first = false;
+        }
+      }
+      tbody.innerHTML = rows.join('');
+
+      tbody.querySelectorAll('.req-num-input').forEach(input => {
+        input.addEventListener('change', () => {
+          const state = getState();
+          const disc = input.dataset.disc;
+          const proc = input.dataset.proc;
+          const field = input.dataset.field;
+          const val = Math.max(0, parseInt(input.value, 10) || 0);
+          input.value = val;
+          if (state.requirements[disc] && state.requirements[disc][proc]) {
+            state.requirements[disc][proc][field] = val;
+            setState(state);
+            renderNavCounts();
+            renderSidebar();
+          }
+        });
+      });
+    }
+
+    function renderDoctorsSettings() {
+      const state = getState();
+      const list = document.getElementById('doctors-list');
+      if (state.doctors.length === 0) {
+        list.innerHTML = '<div style="font-size:13px;color:var(--faint);font-style:italic;">No doctors saved yet.</div>';
+      } else {
+        list.innerHTML = state.doctors.map((d, i) => `
+          <div class="doctor-item">
+            <span>${esc(d)}</span>
+            <button class="doctor-delete" data-index="${i}">✕ remove</button>
+          </div>`).join('');
+
+        list.querySelectorAll('.doctor-delete').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const state = getState();
+            state.doctors.splice(parseInt(btn.dataset.index, 10), 1);
+            setState(state);
+            renderDoctorsSettings();
+          });
+        });
+      }
+    }
 
     // ─────────────────────────────────────────────
     // RENDERING — NAV + SIDEBAR
@@ -748,6 +897,36 @@
     // ─────────────────────────────────────────────
     document.querySelectorAll('.nav-link').forEach(btn => {
       btn.addEventListener('click', () => showView(btn.dataset.view));
+    });
+
+    // Modal event listeners
+    document.getElementById('modal-cancel').addEventListener('click', closeModal);
+    document.getElementById('modal-save').addEventListener('click', saveEntry);
+    document.getElementById('modal-overlay').addEventListener('click', e => {
+      if (e.target === document.getElementById('modal-overlay')) closeModal();
+    });
+    document.getElementById('f-doctor-select').addEventListener('change', function () {
+      const isNew = this.value === '__new__';
+      document.getElementById('new-doctor-row').style.display = isNew ? '' : 'none';
+      if (isNew) document.getElementById('f-new-doctor').focus();
+    });
+
+    // Doctors settings event listeners
+    document.getElementById('add-doctor-btn').addEventListener('click', () => {
+      const input = document.getElementById('new-doctor-input');
+      const name = input.value.trim();
+      if (!name) return;
+      const state = getState();
+      if (!state.doctors.includes(name)) {
+        state.doctors.push(name);
+        setState(state);
+      }
+      input.value = '';
+      renderDoctorsSettings();
+    });
+
+    document.getElementById('new-doctor-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('add-doctor-btn').click();
     });
 
     (function init() {
