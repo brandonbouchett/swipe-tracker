@@ -728,6 +728,9 @@
       if (!modalContext) return;
       const state = getState();
 
+      const date = document.getElementById('f-date').value;
+      if (!date) { alert('Please select a date.'); return; }
+
       let doctor = document.getElementById('f-doctor-select').value;
       if (doctor === '__new__') {
         const newName = document.getElementById('f-new-doctor').value.trim();
@@ -737,13 +740,14 @@
           state.doctors.push(doctor);
         }
       }
+      if (!doctor) { alert('Please select or add a doctor.'); return; }
 
       const entry = {
         id: generateId(),
         discipline: modalContext.discipline,
         procedure: modalContext.proc,
         type: modalContext.type,
-        date: document.getElementById('f-date').value,
+        date,
         doctor,
         axiUmNumber: document.getElementById('f-axium').value.trim(),
         axiUmFormCode: document.getElementById('f-formcode').value.trim(),
@@ -833,7 +837,8 @@
         list.querySelectorAll('.doctor-delete').forEach(btn => {
           btn.addEventListener('click', () => {
             const state = getState();
-            state.doctors.splice(parseInt(btn.dataset.index, 10), 1);
+            const idx = parseInt(btn.dataset.index, 10);
+            state.doctors = state.doctors.filter((_, i) => i !== idx);
             setState(state);
             renderDoctorsSettings();
           });
