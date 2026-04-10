@@ -56,12 +56,6 @@
     #topnav .nav-link.active { background: var(--surface3); color: var(--accent-lt); }
     #global-counts { font-size: 12px; color: var(--muted); white-space: nowrap; }
 
-    /* ── Storage warning ─────────────────────── */
-    #storage-warning {
-      background: #5a2000; border-bottom: 1px solid #8a4000;
-      padding: 8px 20px; font-size: 12px; color: #ffb74d; display: none;
-    }
-
     /* ── App layout ──────────────────────────── */
     #app { display: flex; flex: 1; overflow: hidden; }
 
@@ -242,10 +236,7 @@
       ">Log out</button>
   </nav>
 
-  <!-- Storage warning banner -->
-  <div id="storage-warning">
-    ⚠️ localStorage is unavailable — data will not be saved. Try opening this file outside of private/incognito mode.
-  </div>
+
 
   <!-- Loading overlay -->
   <div id="loading-overlay" style="
@@ -379,7 +370,6 @@
     // ─────────────────────────────────────────────
     // CONSTANTS
     // ─────────────────────────────────────────────
-    const STORAGE_KEY = 'swipeTracker';
     const DISCIPLINES = ['Diagnosis','Operative','Peds','Perio','Endo','Prosth','Surgery','Ortho'];
 
     const DEFAULT_REQUIREMENTS = {
@@ -459,48 +449,70 @@
     };
 
     // ─────────────────────────────────────────────
-    // STATE (localStorage)
+    // STATE (Supabase)
     // ─────────────────────────────────────────────
-    let storageAvailable = true;
+    let state = { requirements: {}, entries: [], doctors: [] };
 
-    function getState() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return buildDefaultState();
-        return JSON.parse(raw);
-      } catch (e) {
-        if (e instanceof SyntaxError) {
-          // Stored data is unreadable (e.g. truncated write) — reset to default
-          // but don't flip storageAvailable since writes may still succeed
-          console.warn('swipeTracker: stored data unreadable, resetting.', e);
-          return buildDefaultState();
+    // All existing render functions call getState() — keep as thin wrapper
+    function getState() { return state; }
+
+    async function loadFromSupabase() {
+      const [entriesRes, doctorsRes, reqsRes] = await Promise.all([
+        sb.from('entries').select('*').order('created_at', { ascending: true }),
+        sb.from('doctors').select('*').order('name'),
+        sb.from('requirements').select('*'),
+      ]);
+
+      if (entriesRes.error) throw entriesRes.error;
+      if (doctorsRes.error) throw doctorsRes.error;
+      if (reqsRes.error) throw reqsRes.error;
+
+      state.entries = entriesRes.data.map(row => ({
+        id: row.id,
+        discipline: row.discipline,
+        procedure: row.procedure,
+        type: row.type,
+        date: row.date,
+        doctor: row.doctor,
+        axiUmNumber: row.axium_number || '',
+        axiUmFormCode: row.axium_form_code || '',
+        notes: row.notes || '',
+        createdAt: new Date(row.created_at).getTime(),
+      }));
+
+      state.doctors = doctorsRes.data.map(row => row.name);
+
+      if (reqsRes.data.length === 0) {
+        await seedRequirements();
+      } else {
+        state.requirements = {};
+        for (const row of reqsRes.data) {
+          if (!state.requirements[row.discipline]) state.requirements[row.discipline] = {};
+          state.requirements[row.discipline][row.procedure] = {
+            formative: row.formative,
+            summative: row.summative,
+          };
         }
-        // Storage API itself is unavailable
-        storageAvailable = false;
-        return buildDefaultState();
       }
     }
 
-    function setState(data) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      } catch (e) {
-        storageAvailable = false;
-        document.getElementById('storage-warning').style.display = 'block';
+    async function seedRequirements() {
+      const { data: { user } } = await sb.auth.getUser();
+      const rows = [];
+      for (const [discipline, procs] of Object.entries(DEFAULT_REQUIREMENTS)) {
+        for (const [procedure, req] of Object.entries(procs)) {
+          rows.push({
+            user_id: user.id,
+            discipline,
+            procedure,
+            formative: req.formative,
+            summative: req.summative,
+          });
+        }
       }
-    }
-
-    function buildDefaultState() {
-      // Deep-clone DEFAULT_REQUIREMENTS so Settings edits don't mutate the constant
-      return {
-        requirements: JSON.parse(JSON.stringify(DEFAULT_REQUIREMENTS)),
-        entries: [],
-        doctors: [],
-      };
-    }
-
-    function generateId() {
-      return crypto.randomUUID();
+      const { error } = await sb.from('requirements').insert(rows);
+      if (error) throw error;
+      state.requirements = JSON.parse(JSON.stringify(DEFAULT_REQUIREMENTS));
     }
 
     // ─────────────────────────────────────────────
@@ -979,21 +991,13 @@
           window.location.href = 'login.html';
           return;
         }
-        // Restore localStorage availability check (state layer still in use until Task 4)
-        try {
-          if (!localStorage.getItem('swipeTracker')) setState(buildDefaultState());
-        } catch (_) {
-          storageAvailable = false;
-        }
-        if (!storageAvailable) {
-          document.getElementById('storage-warning').style.display = 'block';
-        }
+        await loadFromSupabase();
         document.getElementById('loading-overlay').style.display = 'none';
         render();
       } catch (err) {
         console.error('init error:', err);
         document.getElementById('loading-overlay').innerHTML =
-          'Failed to connect. Please refresh the page.';
+          'Failed to load data. Please refresh the page.';
       }
     })();
   </script>
