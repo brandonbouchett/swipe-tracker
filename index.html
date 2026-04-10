@@ -312,6 +312,12 @@
             <button class="btn btn-primary" id="add-doctor-btn">Add</button>
           </div>
         </div>
+
+        <div class="settings-section">
+          <h3>Data</h3>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">Download a backup of all your entries. Keep this somewhere safe — clearing your browser data will erase the tracker.</p>
+          <button class="btn btn-secondary" onclick="exportBackup()">Download backup (JSON)</button>
+        </div>
       </div>
 
     </main>
@@ -566,8 +572,8 @@
       panel.innerHTML = `
         ${entriesHtml}
         <button class="add-entry-btn"
-                data-disc="${discipline}" data-proc="${proc}" data-type="${type}">
-          + Log ${proc} ${type}
+                data-disc="${esc(discipline)}" data-proc="${esc(proc)}" data-type="${type}">
+          + Log ${esc(proc)} ${type}
         </button>`;
 
       panel.querySelector('.add-entry-btn').addEventListener('click', (ev) => {
@@ -647,8 +653,8 @@
         const pid = panelId(discipline, proc, type);
         rows.push(`
           <div class="req-row" id="${rid}"
-               data-disc="${discipline}" data-proc="${proc}" data-type="${type}">
-            <div class="req-name">${proc}</div>
+               data-disc="${esc(discipline)}" data-proc="${esc(proc)}" data-type="${type}">
+            <div class="req-name">${esc(proc)}</div>
             <div class="req-done ${sc}">${done}</div>
             <div class="req-needed">${needed}</div>
             <div class="req-chevron">▶</div>
@@ -934,9 +940,24 @@
       if (e.key === 'Enter') document.getElementById('add-doctor-btn').click();
     });
 
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeModal();
+    });
+
+    function exportBackup() {
+      const data = JSON.stringify(getState(), null, 2);
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
+      a.download = `swipe-tracker-backup-${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+    }
+
     (function init() {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) setState(buildDefaultState()); // setState handles write errors
+      try {
+        if (!localStorage.getItem(STORAGE_KEY)) setState(buildDefaultState());
+      } catch (_) {
+        storageAvailable = false;
+      }
       if (!storageAvailable) {
         document.getElementById('storage-warning').style.display = 'block';
       }
