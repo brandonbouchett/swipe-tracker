@@ -793,7 +793,7 @@
         notes: document.getElementById('f-notes').value.trim(),
       }).select().single();
 
-      if (error) { saveBtn.disabled = false; alert('Failed to save entry.'); return; }
+      if (error) { saveBtn.disabled = false; alert('Failed to save entry: ' + error.message); return; }
 
       const entry = {
         id: data.id,
