@@ -224,6 +224,7 @@
     .add-doctor-row input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: var(--text); font-size: 13px; font-family: inherit; outline: none; }
     .add-doctor-row input:focus { border-color: var(--accent); }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -235,12 +236,23 @@
       <button class="nav-link" data-view="settings">Settings</button>
     </div>
     <div id="global-counts">Loading…</div>
+      <button id="logout-btn" style="
+        padding:6px 12px; border-radius:6px; font-size:12px;
+        background:none; border:1px solid #2a2a4a; color:#888; cursor:pointer;
+      ">Log out</button>
   </nav>
 
   <!-- Storage warning banner -->
   <div id="storage-warning">
     ⚠️ localStorage is unavailable — data will not be saved. Try opening this file outside of private/incognito mode.
   </div>
+
+  <!-- Loading overlay -->
+  <div id="loading-overlay" style="
+    position:fixed; inset:0; background:#0f0f1a;
+    display:flex; align-items:center; justify-content:center;
+    font-size:15px; color:#888; z-index:9999;
+  ">Loading…</div>
 
   <div id="app">
     <!-- Sidebar -->
@@ -361,6 +373,9 @@
   </div>
 
   <script>
+    const { createClient } = supabase;
+    const sb = createClient('https://aaowuzjcdrkifmejjmzc.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhb3d1empjZHJraWZtZWpqbXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MTM1NzEsImV4cCI6MjA5MTM4OTU3MX0.4EeG4FrisyIwSa5QyxkNFZfObOPiYPshXaQEJiVc1TM');
+
     // ─────────────────────────────────────────────
     // CONSTANTS
     // ─────────────────────────────────────────────
@@ -952,15 +967,19 @@
       a.click();
     }
 
-    (function init() {
-      try {
-        if (!localStorage.getItem(STORAGE_KEY)) setState(buildDefaultState());
-      } catch (_) {
-        storageAvailable = false;
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+      await sb.auth.signOut();
+      window.location.href = 'login.html';
+    });
+
+    (async function init() {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) {
+        window.location.href = 'login.html';
+        return;
       }
-      if (!storageAvailable) {
-        document.getElementById('storage-warning').style.display = 'block';
-      }
+      // Data load will be wired in Task 4
+      document.getElementById('loading-overlay').style.display = 'none';
       render();
     })();
   </script>
