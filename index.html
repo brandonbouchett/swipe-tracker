@@ -775,7 +775,7 @@
         doctor = newName; // empty is fine — no doctor will be saved
         if (newName && !state.doctors.includes(newName)) {
           const { error: docErr } = await sb.from('doctors')
-            .upsert({ name: newName }, { onConflict: 'name', ignoreDuplicates: true });
+            .upsert({ name: newName, user_id: currentUserId }, { onConflict: 'user_id,name', ignoreDuplicates: true });
           if (docErr) { saveBtn.disabled = false; alert('Failed to save doctor.'); return; }
           newDoctorAdded = true;
         }
@@ -983,7 +983,7 @@
       const name = input.value.trim();
       if (!name) return;
       const { error } = await sb.from('doctors')
-        .upsert({ name }, { onConflict: 'name', ignoreDuplicates: true });
+        .upsert({ name, user_id: currentUserId }, { onConflict: 'user_id,name', ignoreDuplicates: true });
       if (error) { alert('Failed to add doctor.'); return; }
       if (!state.doctors.includes(name)) state.doctors.push(name);
       input.value = '';
