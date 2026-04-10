@@ -760,9 +760,8 @@
       if (doctors.length > 0) select.value = doctors[0];
     }
 
-    function saveEntry() {
+    async function saveEntry() {
       if (!modalContext) return;
-      const state = getState();
 
       const date = document.getElementById('f-date').value;
       if (!date) { alert('Please select a date.'); return; }
@@ -773,30 +772,43 @@
         if (!newName) { alert('Please enter a doctor name.'); return; }
         doctor = newName;
         if (!state.doctors.includes(doctor)) {
+          const { error: docErr } = await sb.from('doctors').insert({ name: doctor });
+          if (docErr) { alert('Failed to save doctor.'); return; }
           state.doctors.push(doctor);
         }
       }
       if (!doctor) { alert('Please select or add a doctor.'); return; }
 
-      const entry = {
-        id: generateId(),
+      const { data, error } = await sb.from('entries').insert({
         discipline: modalContext.discipline,
         procedure: modalContext.proc,
         type: modalContext.type,
         date,
         doctor,
-        axiUmNumber: document.getElementById('f-axium').value.trim(),
-        axiUmFormCode: document.getElementById('f-formcode').value.trim(),
+        axium_number: document.getElementById('f-axium').value.trim(),
+        axium_form_code: document.getElementById('f-formcode').value.trim(),
         notes: document.getElementById('f-notes').value.trim(),
-        createdAt: Date.now(),
+      }).select().single();
+
+      if (error) { alert('Failed to save entry.'); return; }
+
+      const entry = {
+        id: data.id,
+        discipline: data.discipline,
+        procedure: data.procedure,
+        type: data.type,
+        date: data.date,
+        doctor: data.doctor,
+        axiUmNumber: data.axium_number || '',
+        axiUmFormCode: data.axium_form_code || '',
+        notes: data.notes || '',
+        createdAt: new Date(data.created_at).getTime(),
       };
 
       state.entries.push(entry);
-      setState(state);
       closeModal();
       render();
 
-      // Reopen the row the user was logging for
       setTimeout(() => {
         const rid = rowId(entry.discipline, entry.procedure, entry.type);
         const row = document.getElementById(rid);
