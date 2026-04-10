@@ -973,14 +973,28 @@
     });
 
     (async function init() {
-      const { data: { session } } = await sb.auth.getSession();
-      if (!session) {
-        window.location.href = 'login.html';
-        return;
+      try {
+        const { data: { session } } = await sb.auth.getSession();
+        if (!session) {
+          window.location.href = 'login.html';
+          return;
+        }
+        // Restore localStorage availability check (state layer still in use until Task 4)
+        try {
+          if (!localStorage.getItem('swipeTracker')) setState(buildDefaultState());
+        } catch (_) {
+          storageAvailable = false;
+        }
+        if (!storageAvailable) {
+          document.getElementById('storage-warning').style.display = 'block';
+        }
+        document.getElementById('loading-overlay').style.display = 'none';
+        render();
+      } catch (err) {
+        console.error('init error:', err);
+        document.getElementById('loading-overlay').innerHTML =
+          'Failed to connect. Please refresh the page.';
       }
-      // Data load will be wired in Task 4
-      document.getElementById('loading-overlay').style.display = 'none';
-      render();
     })();
   </script>
 </body>
