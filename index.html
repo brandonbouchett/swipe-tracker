@@ -123,7 +123,7 @@
       align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--surface2);
       gap: 8px; cursor: pointer; transition: background 0.12s; user-select: none;
     }
-    .req-row:last-of-type { border-bottom: none; }
+    .log-panel:last-child { border-bottom: none; }
     .req-row:hover, .req-row.expanded { background: #1a1a38; }
     .req-name { font-size: 13px; }
     .req-done { text-align: center; font-size: 13px; font-weight: 600; }
@@ -522,6 +522,14 @@
     // ─────────────────────────────────────────────
     // TASK 5: ID helpers + log panel + delete
     // ─────────────────────────────────────────────
+    function esc(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
     function sanitizeId(str) {
       return str.replace(/[^a-z0-9-]/gi, '_');
     }
@@ -546,13 +554,13 @@
         : entries.map(e => `
             <div class="log-entry">
               <div class="entry-info">
-                <span class="entry-date">${e.date || '—'}</span>
-                <span class="entry-doctor">${e.doctor || '—'}</span>
-                ${e.axiUmNumber ? `<span class="entry-axium">axiUm #${e.axiUmNumber}</span>` : ''}
-                ${e.axiUmFormCode ? `<span class="entry-axium">${e.axiUmFormCode}</span>` : ''}
-                ${e.notes ? `<span class="entry-notes" title="${e.notes}">${e.notes}</span>` : ''}
+                <span class="entry-date">${esc(e.date || '—')}</span>
+                <span class="entry-doctor">${esc(e.doctor || '—')}</span>
+                ${e.axiUmNumber ? `<span class="entry-axium">axiUm #${esc(e.axiUmNumber)}</span>` : ''}
+                ${e.axiUmFormCode ? `<span class="entry-axium">${esc(e.axiUmFormCode)}</span>` : ''}
+                ${e.notes ? `<span class="entry-notes" title="${esc(e.notes)}">${esc(e.notes)}</span>` : ''}
               </div>
-              <button class="entry-delete" data-id="${e.id}">✕</button>
+              <button class="entry-delete" data-id="${esc(e.id)}">✕</button>
             </div>`).join('');
 
       panel.innerHTML = `
@@ -601,10 +609,20 @@
 
     function deleteEntry(id) {
       if (!confirm('Delete this entry?')) return;
+      // Capture which row is open before render wipes the DOM
+      const openRow = document.querySelector('.req-row.expanded');
+      const ctx = openRow
+        ? { disc: openRow.dataset.disc, proc: openRow.dataset.proc, type: openRow.dataset.type }
+        : null;
       const state = getState();
       state.entries = state.entries.filter(e => e.id !== id);
       setState(state);
       render();
+      // Reopen the same panel so the user doesn't lose their place
+      if (ctx) {
+        const row = document.getElementById(rowId(ctx.disc, ctx.proc, ctx.type));
+        if (row) toggleLogPanel(row);
+      }
     }
 
     // ─────────────────────────────────────────────
