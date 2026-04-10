@@ -520,10 +520,159 @@
     }
 
     // ─────────────────────────────────────────────
+    // TASK 5: ID helpers + log panel + delete
+    // ─────────────────────────────────────────────
+    function sanitizeId(str) {
+      return str.replace(/[^a-z0-9-]/gi, '_');
+    }
+
+    function panelId(discipline, proc, type) {
+      return `panel-${sanitizeId(discipline)}-${sanitizeId(proc)}-${sanitizeId(type)}`;
+    }
+
+    function rowId(discipline, proc, type) {
+      return `row-${sanitizeId(discipline)}-${sanitizeId(proc)}-${sanitizeId(type)}`;
+    }
+
+    function renderLogPanel(discipline, proc, type) {
+      const state = getState();
+      const entries = getEntriesFor(state, discipline, proc, type);
+      const pid = panelId(discipline, proc, type);
+      const panel = document.getElementById(pid);
+      if (!panel) return;
+
+      const entriesHtml = entries.length === 0
+        ? `<div class="log-empty">No entries yet.</div>`
+        : entries.map(e => `
+            <div class="log-entry">
+              <div class="entry-info">
+                <span class="entry-date">${e.date || '—'}</span>
+                <span class="entry-doctor">${e.doctor || '—'}</span>
+                ${e.axiUmNumber ? `<span class="entry-axium">axiUm #${e.axiUmNumber}</span>` : ''}
+                ${e.axiUmFormCode ? `<span class="entry-axium">${e.axiUmFormCode}</span>` : ''}
+                ${e.notes ? `<span class="entry-notes" title="${e.notes}">${e.notes}</span>` : ''}
+              </div>
+              <button class="entry-delete" data-id="${e.id}">✕</button>
+            </div>`).join('');
+
+      panel.innerHTML = `
+        ${entriesHtml}
+        <button class="add-entry-btn"
+                data-disc="${discipline}" data-proc="${proc}" data-type="${type}">
+          + Log ${proc} ${type}
+        </button>`;
+
+      panel.querySelector('.add-entry-btn').addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        openModal(discipline, proc, type);
+      });
+
+      panel.querySelectorAll('.entry-delete').forEach(btn => {
+        btn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          deleteEntry(btn.dataset.id);
+        });
+      });
+    }
+
+    function toggleLogPanel(row) {
+      const disc = row.dataset.disc;
+      const proc = row.dataset.proc;
+      const type = row.dataset.type;
+      const pid = panelId(disc, proc, type);
+      const panel = document.getElementById(pid);
+      if (!panel) return;
+
+      const isOpen = panel.classList.contains('open');
+      // Close all open panels
+      document.querySelectorAll('.log-panel.open').forEach(p => p.classList.remove('open'));
+      document.querySelectorAll('.req-row.expanded').forEach(r => {
+        r.classList.remove('expanded');
+        r.querySelector('.req-chevron').textContent = '▶';
+      });
+
+      if (!isOpen) {
+        panel.classList.add('open');
+        row.classList.add('expanded');
+        row.querySelector('.req-chevron').textContent = '▼';
+        renderLogPanel(disc, proc, type);
+      }
+    }
+
+    function deleteEntry(id) {
+      if (!confirm('Delete this entry?')) return;
+      const state = getState();
+      state.entries = state.entries.filter(e => e.id !== id);
+      setState(state);
+      render();
+    }
+
+    // ─────────────────────────────────────────────
+    // TASK 4: Discipline detail view
+    // ─────────────────────────────────────────────
+    function statusClass(done, needed) {
+      if (needed === 0) return '';
+      if (done >= needed) return 'status-met';
+      if (done > 0) return 'status-partial';
+      return 'status-none';
+    }
+
+    function buildReqRows(state, discipline, type) {
+      const procs = state.requirements[discipline] || {};
+      const rows = [];
+      for (const [proc, req] of Object.entries(procs)) {
+        const needed = req[type];
+        if (needed === 0) continue;
+        const done = getCountFor(state, discipline, proc, type);
+        const sc = statusClass(done, needed);
+        const rid = rowId(discipline, proc, type);
+        const pid = panelId(discipline, proc, type);
+        rows.push(`
+          <div class="req-row" id="${rid}"
+               data-disc="${discipline}" data-proc="${proc}" data-type="${type}">
+            <div class="req-name">${proc}</div>
+            <div class="req-done ${sc}">${done}</div>
+            <div class="req-needed">${needed}</div>
+            <div class="req-chevron">▶</div>
+          </div>
+          <div class="log-panel" id="${pid}"></div>`);
+      }
+      return rows.join('');
+    }
+
+    function renderDiscipline() {
+      const state = getState();
+      const disc = activeDiscipline;
+      document.getElementById('disc-title').textContent = disc;
+
+      const { done, needed } = computeDiscProgress(state, disc);
+      const pct = needed > 0 ? Math.round((done / needed) * 100) : 0;
+      document.getElementById('disc-progress-bar').style.width = pct + '%';
+      document.getElementById('disc-progress-label').textContent =
+        `${done} of ${needed} requirements met`;
+
+      document.getElementById('formatives-rows').innerHTML =
+        buildReqRows(state, disc, 'formative');
+      document.getElementById('summatives-rows').innerHTML =
+        buildReqRows(state, disc, 'summative');
+
+      // Hide section if it has no rows
+      const fRows = document.getElementById('formatives-rows').children.length;
+      document.getElementById('formatives-section').style.display = fRows ? '' : 'none';
+      const sRows = document.getElementById('summatives-rows').children.length;
+      document.getElementById('summatives-section').style.display = sRows ? '' : 'none';
+
+      // Attach row click handlers
+      document.querySelectorAll('.req-row').forEach(row => {
+        row.addEventListener('click', () => toggleLogPanel(row));
+      });
+    }
+
+    // ─────────────────────────────────────────────
     // Stubs — implemented in later tasks
     // ─────────────────────────────────────────────
-    function renderDiscipline() {}
     function renderSettings() {}
+    function openModal(discipline, proc, type) {} // stub — implemented in Task 6
 
     // ─────────────────────────────────────────────
     // RENDERING — NAV + SIDEBAR
