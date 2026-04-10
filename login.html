@@ -119,23 +119,41 @@
       btn.disabled = true;
       btn.textContent = mode === 'login' ? 'Logging in…' : 'Creating account…';
 
-      const { error } = mode === 'login'
-        ? await sb.auth.signInWithPassword({ email, password })
-        : await sb.auth.signUp({ email, password });
-
-      if (error) {
-        errEl.textContent = error.message;
-        btn.disabled = false;
-        btn.textContent = mode === 'login' ? 'Log in' : 'Create account';
-        return;
+      if (mode === 'login') {
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) {
+          errEl.textContent = error.message;
+          btn.disabled = false;
+          btn.textContent = 'Log in';
+          return;
+        }
+        window.location.href = 'index.html';
+      } else {
+        const { data, error } = await sb.auth.signUp({ email, password });
+        if (error) {
+          errEl.textContent = error.message;
+          btn.disabled = false;
+          btn.textContent = 'Create account';
+          return;
+        }
+        if (data.session) {
+          // Email confirmation is off — user is logged in immediately
+          window.location.href = 'index.html';
+        } else {
+          // Email confirmation is on — show message, don't redirect
+          errEl.style.color = '#4caf50';
+          errEl.textContent = 'Check your inbox — we sent you a confirmation email.';
+          btn.disabled = false;
+          btn.textContent = 'Create account';
+        }
       }
-
-      window.location.href = 'index.html';
     }
 
     document.getElementById('submit-btn').addEventListener('click', submit);
-    document.getElementById('password').addEventListener('keydown', e => {
-      if (e.key === 'Enter') submit();
+    ['email', 'password'].forEach(id => {
+      document.getElementById(id).addEventListener('keydown', e => {
+        if (e.key === 'Enter') submit();
+      });
     });
   </script>
 </body>
