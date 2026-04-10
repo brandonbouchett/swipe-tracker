@@ -455,6 +455,9 @@
 
     // All existing render functions call getState() — keep as thin wrapper
     function getState() { return state; }
+    // Temporary stubs — replaced by Supabase writes in Tasks 5–8
+    function setState(_data) { /* no-op */ }
+    function generateId() { return crypto.randomUUID(); }
 
     async function loadFromSupabase() {
       const [entriesRes, doctorsRes, reqsRes] = await Promise.all([
@@ -483,7 +486,8 @@
       state.doctors = doctorsRes.data.map(row => row.name);
 
       if (reqsRes.data.length === 0) {
-        await seedRequirements();
+        const { data: { user } } = await sb.auth.getUser();
+        await seedRequirements(user.id);
       } else {
         state.requirements = {};
         for (const row of reqsRes.data) {
@@ -496,13 +500,12 @@
       }
     }
 
-    async function seedRequirements() {
-      const { data: { user } } = await sb.auth.getUser();
+    async function seedRequirements(userId) {
       const rows = [];
       for (const [discipline, procs] of Object.entries(DEFAULT_REQUIREMENTS)) {
         for (const [procedure, req] of Object.entries(procs)) {
           rows.push({
-            user_id: user.id,
+            user_id: userId,
             discipline,
             procedure,
             formative: req.formative,
