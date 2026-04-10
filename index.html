@@ -100,7 +100,7 @@
     .legend span { display: flex; align-items: center; gap: 5px; }
     .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
     .progress-wrap { background: var(--surface2); border-radius: 6px; height: 7px; overflow: hidden; margin-bottom: 6px; }
-    .progress-bar { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--accent), var(--accent-lt)); transition: width 0.3s; }
+    .progress-bar { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--accent), var(--accent-lt)); transition: width 0.3s; width: 0; }
     #disc-progress-label { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
 
     /* ── Section ─────────────────────────────── */
@@ -198,7 +198,7 @@
     .btn-secondary:hover { color: var(--text); }
 
     /* ── Settings page ───────────────────────── */
-    #settings-view h2 { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+    #settings-view h1 { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
     #settings-view .settings-subtitle { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
     .settings-section { margin-bottom: 32px; }
     .settings-section h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-lt); margin-bottom: 12px; }
@@ -254,7 +254,7 @@
 
       <!-- Tracker view -->
       <div id="tracker-view" class="view active">
-        <div id="disc-title"></div>
+        <h1 id="disc-title"></h1>
         <div class="legend">
           <span><span class="dot" style="background:var(--green)"></span> Complete</span>
           <span><span class="dot" style="background:var(--orange)"></span> In progress</span>
@@ -286,7 +286,7 @@
 
       <!-- Settings view -->
       <div id="settings-view" class="view">
-        <h2>Settings</h2>
+        <h1>Settings</h1>
         <p class="settings-subtitle">Edit required counts or manage your saved doctors list.</p>
 
         <div class="settings-section">
@@ -323,28 +323,28 @@
       <h3 id="modal-title">Log Entry</h3>
       <div class="form-grid">
         <div class="form-row">
-          <label>Date</label>
+          <label for="f-date">Date</label>
           <input type="date" id="f-date">
         </div>
         <div class="form-row">
-          <label>axiUm #</label>
+          <label for="f-axium">axiUm #</label>
           <input type="text" id="f-axium" placeholder="e.g. 50100511">
         </div>
       </div>
       <div class="form-row">
-        <label>Doctor / Instructor</label>
+        <label for="f-doctor-select">Doctor / Instructor</label>
         <select id="f-doctor-select"></select>
       </div>
       <div class="form-row" id="new-doctor-row" style="display:none">
-        <label>New doctor name</label>
+        <label for="f-new-doctor">New doctor name</label>
         <input type="text" id="f-new-doctor" placeholder="Dr. …">
       </div>
       <div class="form-row">
-        <label>axiUm Form Code</label>
+        <label for="f-formcode">axiUm Form Code</label>
         <input type="text" id="f-formcode" placeholder="e.g. D0150">
       </div>
       <div class="form-row">
-        <label>Notes</label>
+        <label for="f-notes">Notes</label>
         <textarea id="f-notes" placeholder="Optional notes…"></textarea>
       </div>
       <div class="modal-actions">
