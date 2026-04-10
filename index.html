@@ -860,41 +860,50 @@
       tbody.innerHTML = rows.join('');
 
       tbody.querySelectorAll('.req-num-input').forEach(input => {
-        input.addEventListener('change', () => {
-          const state = getState();
+        input.addEventListener('change', async () => {
           const disc = input.dataset.disc;
           const proc = input.dataset.proc;
           const field = input.dataset.field;
           const val = Math.max(0, parseInt(input.value, 10) || 0);
           input.value = val;
-          if (state.requirements[disc] && state.requirements[disc][proc]) {
-            state.requirements[disc][proc][field] = val;
-            setState(state);
-            renderNavCounts();
-            renderSidebar();
+
+          if (!state.requirements[disc] || !state.requirements[disc][proc]) return;
+
+          const { error } = await sb.from('requirements')
+            .update({ [field]: val })
+            .eq('discipline', disc)
+            .eq('procedure', proc);
+
+          if (error) {
+            alert('Failed to save requirement change.');
+            input.value = state.requirements[disc][proc][field];
+            return;
           }
+
+          state.requirements[disc][proc][field] = val;
+          renderNavCounts();
+          renderSidebar();
         });
       });
     }
 
     function renderDoctorsSettings() {
-      const state = getState();
       const list = document.getElementById('doctors-list');
       if (state.doctors.length === 0) {
         list.innerHTML = '<div style="font-size:13px;color:var(--faint);font-style:italic;">No doctors saved yet.</div>';
       } else {
-        list.innerHTML = state.doctors.map((d, i) => `
+        list.innerHTML = state.doctors.map(d => `
           <div class="doctor-item">
             <span>${esc(d)}</span>
-            <button class="doctor-delete" data-index="${i}">✕ remove</button>
+            <button class="doctor-delete" data-name="${esc(d)}">✕ remove</button>
           </div>`).join('');
 
         list.querySelectorAll('.doctor-delete').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const state = getState();
-            const idx = parseInt(btn.dataset.index, 10);
-            state.doctors = state.doctors.filter((_, i) => i !== idx);
-            setState(state);
+          btn.addEventListener('click', async () => {
+            const name = btn.dataset.name;
+            const { error } = await sb.from('doctors').delete().eq('name', name);
+            if (error) { alert('Failed to remove doctor.'); return; }
+            state.doctors = state.doctors.filter(d => d !== name);
             renderDoctorsSettings();
           });
         });
@@ -972,15 +981,17 @@
     });
 
     // Doctors settings event listeners
-    document.getElementById('add-doctor-btn').addEventListener('click', () => {
+    document.getElementById('add-doctor-btn').addEventListener('click', async () => {
       const input = document.getElementById('new-doctor-input');
       const name = input.value.trim();
       if (!name) return;
-      const state = getState();
-      if (!state.doctors.includes(name)) {
-        state.doctors.push(name);
-        setState(state);
+      if (state.doctors.includes(name)) {
+        input.value = '';
+        return;
       }
+      const { error } = await sb.from('doctors').insert({ name });
+      if (error) { alert('Failed to add doctor.'); return; }
+      state.doctors.push(name);
       input.value = '';
       renderDoctorsSettings();
     });
